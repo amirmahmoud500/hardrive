@@ -1,0 +1,230 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Game Vault | Hard Drive Manager</title>
+    <link href="https://fonts.googleapis.com/css2?family=Share+Tech+Mono&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg-color: #090a0f;
+            --card-bg: #151821;
+            --neon-cyan: #00f3ff;
+            --neon-pink: #ff00ea;
+            --text-main: #e0e6ed;
+            --text-muted: #8a95a5;
+        }
+
+        body {
+            background-color: var(--bg-color);
+            color: var(--text-main);
+            font-family: 'Share Tech Mono', monospace;
+            margin: 0;
+            padding: 2rem;
+            background-image: radial-gradient(circle at top center, #1a1e29 0%, transparent 70%);
+            min-height: 100vh;
+        }
+
+        header {
+            text-align: center;
+            margin-bottom: 3rem;
+        }
+
+        h1 {
+            font-size: 3rem;
+            margin: 0;
+            color: var(--neon-cyan);
+            text-transform: uppercase;
+            letter-spacing: 4px;
+            text-shadow: 0 0 10px rgba(0, 243, 255, 0.5);
+        }
+
+        .subtitle {
+            color: var(--text-muted);
+            font-size: 1.2rem;
+            margin-top: 0.5rem;
+        }
+
+        #drives-container {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+            gap: 2rem;
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+
+        .drive-card {
+            background-color: var(--card-bg);
+            border: 1px solid #2a3143;
+            border-radius: 8px;
+            padding: 1.5rem;
+            transition: all 0.3s ease;
+            position: relative;
+            overflow: hidden;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.3);
+        }
+
+        .drive-card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 4px;
+            background: linear-gradient(90deg, var(--neon-cyan), var(--neon-pink));
+            opacity: 0.7;
+        }
+
+        .drive-card:hover {
+            transform: translateY(-5px);
+            border-color: var(--neon-cyan);
+            box-shadow: 0 0 20px rgba(0, 243, 255, 0.2);
+        }
+
+        .drive-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-bottom: 1px solid #2a3143;
+            padding-bottom: 1rem;
+            margin-bottom: 1rem;
+        }
+
+        .drive-title {
+            font-size: 1.5rem;
+            color: var(--neon-pink);
+            margin: 0;
+            text-shadow: 0 0 5px rgba(255, 0, 234, 0.4);
+        }
+
+        .drive-id {
+            background: #2a3143;
+            padding: 0.3rem 0.8rem;
+            border-radius: 4px;
+            font-size: 0.9rem;
+            color: var(--neon-cyan);
+        }
+
+        .game-list {
+            list-style: none;
+            padding: 0;
+            margin: 0;
+        }
+
+        .game-list li {
+            padding: 0.8rem 0;
+            border-bottom: 1px dashed #2a3143;
+            position: relative;
+            padding-left: 1.5rem;
+        }
+
+        .game-list li:last-child {
+            border-bottom: none;
+        }
+
+        .game-list li::before {
+            content: '>';
+            position: absolute;
+            left: 0;
+            color: var(--neon-cyan);
+        }
+
+        .loading {
+            text-align: center;
+            font-size: 1.5rem;
+            color: var(--neon-cyan);
+            grid-column: 1 / -1;
+            animation: pulse 1.5s infinite;
+        }
+
+        @keyframes pulse {
+            0% { opacity: 0.5; }
+            50% { opacity: 1; }
+            100% { opacity: 0.5; }
+        }
+    </style>
+</head>
+<body>
+
+    <header>
+        <h1>Game Vault</h1>
+        <div class="subtitle">Secure Storage Interface</div>
+    </header>
+
+    <div id="drives-container">
+        <div class="loading">ESTABLISHING CONNECTION TO DATABASE...</div>
+    </div>
+
+    <!-- Firebase v10 Modular SDK -->
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
+        import { getFirestore, collection, getDocs } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+
+        // ==========================================
+        // REPLACE THIS OBJECT WITH YOUR FIREBASE CONFIG
+        // ==========================================
+        const firebaseConfig = {
+          apiKey: "AIzaSyA6Nc0ND7v9p8p9MnPa8QzoL3y_YyJPZXw",
+          authDomain: "hardrive-games.firebaseapp.com",
+          databaseURL: "https://hardrive-games-default-rtdb.firebaseio.com",
+          projectId: "hardrive-games",
+          storageBucket: "hardrive-games.firebasestorage.app",
+          messagingSenderId: "53595926902",
+          appId: "1:53595926902:web:741d43c2948ed47358ca57",
+          measurementId: "G-4W8WK8PWRE"
+};
+
+
+        // Initialize Firebase
+        const app = initializeApp(firebaseConfig);
+        const db = getFirestore(app);
+
+        async function fetchDrives() {
+            const container = document.getElementById('drives-container');
+            
+            try {
+                const querySnapshot = await getDocs(collection(db, "harddrives"));
+                container.innerHTML = ''; // Clear loading text
+
+                if (querySnapshot.empty) {
+                    container.innerHTML = '<div class="loading" style="color: var(--neon-pink);">NO DATA FOUND. ADD DRIVES IN FIREBASE CONSOLE.</div>';
+                    return;
+                }
+
+                querySnapshot.forEach((doc) => {
+                    const data = doc.data();
+                    const driveId = doc.id;
+                    const driveName = data.name || `Unnamed Drive`;
+                    const games = data.games || [];
+
+                    const card = document.createElement('div');
+                    card.className = 'drive-card';
+
+                    // Map through the games array to create list items
+                    const gamesHtml = games.map(game => `<li>${game}</li>`).join('');
+
+                    card.innerHTML = `
+                        <div class="drive-header">
+                            <h2 class="drive-title">${driveName}</h2>
+                            <span class="drive-id">Drive [${driveId}]</span>
+                        </div>
+                        <ul class="game-list">
+                            ${gamesHtml.length > 0 ? gamesHtml : '<li><i>Drive Empty</i></li>'}
+                        </ul>
+                    `;
+                    
+                    container.appendChild(card);
+                });
+
+            } catch (error) {
+                console.error("Error fetching data:", error);
+                container.innerHTML = `<div class="loading" style="color: red;">CONNECTION ERROR. CHECK CONSOLE & CONFIG.</div>`;
+            }
+        }
+
+        // Run the function
+        fetchDrives();
+    </script>
+
+</body>
+</html>
